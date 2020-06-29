@@ -16,11 +16,13 @@ import string
 import typing
 
 import hug  # type: ignore
+from hug.middleware import SessionMiddleware  # type: ignore
 
 import intelmq_manager.runctl as runctl
 import intelmq_manager.files as files
 import intelmq_manager.pages as pages
 import intelmq_manager.config
+import intelmq_manager.session as session
 
 
 Levels = hug.types.OneOf(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL",
@@ -48,6 +50,14 @@ runner: runctl.RunIntelMQCtl = runctl.RunIntelMQCtl(api_config.intelmq_ctl_cmd)
 
 file_access: files.FileAccess = files.FileAccess(api_config)
 
+# Add session middleware with a dummy store so that we can later
+# initialize it properly in initialize_api. When initialize_api is
+# called from a function registered with the hug.startup decorator it's
+# too late to add new middleware, so we need to add it now and modify it
+# in place later.
+session_middleware = SessionMiddleware(session.NoOpStore())
+hug.API(__name__).http.add_middleware(session_middleware)
+
 
 def initialize_api(filename: typing.Optional[str] = None) -> None:
     """Initialize the API, optionally loading a configuration file.
@@ -69,6 +79,12 @@ def initialize_api(filename: typing.Optional[str] = None) -> None:
         api_config = intelmq_manager.config.load_config(filename)
     runner = runctl.RunIntelMQCtl(api_config.intelmq_ctl_cmd)
     file_access.update_from_runctl(runner.get_paths())
+
+    session_file = api_config.session_store
+    if session_file is not None:
+        session_middleware.store = session.SessionStore(str(session_file))
+        session_middleware.cookie_http_only = api_config.session_cookie_http_only
+        session_middleware.cookie_secure = api_config.session_cookie_secure
 
 
 def cache_get(*args, **kw):

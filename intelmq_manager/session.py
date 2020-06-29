@@ -77,3 +77,16 @@ class SessionStore:
         self.transaction(STORE_SESSION_SQL,
                          (session_id, json.dumps(session_data)))
 
+
+class NoOpStore:
+    """Dummy session store to use during initialisation.
+    """
+
+    def exists(self, key):
+        return False
+
+    def get(self, key):
+        return none
+
+    def set(self, key, data):
+        pass

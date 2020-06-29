@@ -8,7 +8,7 @@ Author(s):
   * Bernhard Herzog <bernhard.herzog@intevation.de>
 """
 
-from typing import List
+from typing import List, Optional
 import json
 from pathlib import Path
 
@@ -21,6 +21,10 @@ class Config:
                                   "/usr/local/bin/intelmqctl"]
 
     allowed_path: Path = Path("/opt/intelmq/var/lib/bots/")
+
+    session_store: Optional[Path] = None
+    session_cookie_http_only: bool = True
+    session_cookie_secure: bool = True
 
 
 def load_config(filename: str) -> Config:
@@ -35,5 +39,13 @@ def load_config(filename: str) -> Config:
 
     if "allowed_path" in raw:
         config.allowed_path = Path(raw["allowed_path"])
+
+    if "session_store" in raw:
+        config.session_store = Path(raw["session_store"])
+
+    config.session_cookie_http_only = raw.get("session_cookie_http_only",
+                                              config.session_cookie_http_only)
+    config.session_cookie_secure = raw.get("session_cookie_secure",
+                                           config.session_cookie_secure)
 
     return config
