@@ -13,11 +13,13 @@ import string
 import typing
 from contextlib import contextmanager
 import json
+import threading
 
 import sqlite3
 
 
 INIT_DB_SQL = """
+BEGIN;
 CREATE TABLE version (version INTEGER);
 INSERT INTO version (version) VALUES (1);
 CREATE TABLE session (
@@ -25,6 +27,7 @@ CREATE TABLE session (
     modified TIMESTAMP,
     data BLOB
 );
+COMMIT;
 """
 
 LOOKUP_SESSION_SQL = """
@@ -44,20 +47,25 @@ class SessionStore:
         self.dbname = dbname
         if not os.path.isfile(self.dbname):
             self.init_sqlite_db()
+        self.lock = threading.Lock()
+        self.connection = self.connect()
 
+    def connect(self):
+        return sqlite3.connect(self.dbname, check_same_thread=False,
+                               isolation_level=None)
+
+    @contextmanager
     def get_con(self):
-        return sqlite3.connect(self.dbname)
+        with self.lock:
+            yield self.connection
 
     def init_sqlite_db(self):
-        with self.get_con() as con:
+        with self.connect() as con:
             con.executescript(INIT_DB_SQL)
 
-    def query(self, stmt, params):
-        return self.get_con().execute(stmt, params)
-
-    def transaction(self, stmt, params):
+    def execute(self, stmt, params):
         with self.get_con() as con:
-            con.execute(stmt, params)
+            return con.execute(stmt, params).fetchone()
 
 
     #
@@ -65,7 +73,7 @@ class SessionStore:
     #
 
     def get(self, session_id):
-        row = self.query(LOOKUP_SESSION_SQL, (session_id,)).fetchone()
+        row = self.execute(LOOKUP_SESSION_SQL, (session_id,))
         if row is not None:
             return json.loads(row[0])
         return None
@@ -74,8 +82,8 @@ class SessionStore:
         return self.get(session_id) is not None
 
     def set(self, session_id, session_data):
-        self.transaction(STORE_SESSION_SQL,
-                         (session_id, json.dumps(session_data)))
+        self.execute(STORE_SESSION_SQL,
+                     (session_id, json.dumps(session_data)))
 
 
 class NoOpStore:
