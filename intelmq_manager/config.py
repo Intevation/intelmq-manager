@@ -23,8 +23,6 @@ class Config:
     allowed_path: Path = Path("/opt/intelmq/var/lib/bots/")
 
     session_store: Optional[Path] = None
-    session_cookie_http_only: bool = True
-    session_cookie_secure: bool = True
 
 
 def load_config(filename: str) -> Config:
@@ -42,10 +40,5 @@ def load_config(filename: str) -> Config:
 
     if "session_store" in raw:
         config.session_store = Path(raw["session_store"])
-
-    config.session_cookie_http_only = raw.get("session_cookie_http_only",
-                                              config.session_cookie_http_only)
-    config.session_cookie_secure = raw.get("session_cookie_secure",
-                                           config.session_cookie_secure)
 
     return config

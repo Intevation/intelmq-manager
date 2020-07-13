@@ -84,17 +84,3 @@ class SessionStore:
     def set(self, session_id, session_data):
         self.execute(STORE_SESSION_SQL,
                      (session_id, json.dumps(session_data)))
-
-
-class NoOpStore:
-    """Dummy session store to use during initialisation.
-    """
-
-    def exists(self, key):
-        return False
-
-    def get(self, key):
-        return none
-
-    def set(self, key, data):
-        pass
