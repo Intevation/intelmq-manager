@@ -76,7 +76,8 @@ def initialize_api(filename: typing.Optional[str] = None) -> None:
 
     session_file = api_config.session_store
     if session_file is not None:
-        session_store = session.SessionStore(str(session_file))
+        session_store = session.SessionStore(str(session_file),
+                                             api_config.session_duration)
 
 
 def cache_get(*args, **kw):

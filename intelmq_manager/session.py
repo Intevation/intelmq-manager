@@ -48,6 +48,14 @@ INSERT OR REPLACE INTO session (session_id, modified, data)
 VALUES (?, CURRENT_TIMESTAMP, ?);
 """
 
+EXPIRATION_SQL = """
+DELETE FROM session
+ WHERE strftime('%s', 'now') - strftime('%s', modified) > ?;
+"""
+
+TOUCH_SESSION_SQL = """
+UPDATE session SET modified = CURRENT_TIMESTAMP WHERE session_id = ?;
+"""
 
 ADD_USER_SQL = """
 INSERT OR REPLACE INTO user (username, password, salt) VALUES (?, ?, ?);
@@ -62,8 +70,9 @@ class SessionStore:
     """Session store based on SQLite
     """
 
-    def __init__(self, dbname):
+    def __init__(self, dbname, max_duration):
         self.dbname = dbname
+        self.max_duration = max_duration
         if not os.path.isfile(self.dbname):
             self.init_sqlite_db()
         self.lock = threading.Lock()
@@ -91,7 +100,11 @@ class SessionStore:
     # Methods for session data
     #
 
+    def expire_sessions(self):
+        self.execute(EXPIRATION_SQL, (self.max_duration,))
+
     def get(self, session_id):
+        self.expire_sessions()
         row = self.execute(LOOKUP_SESSION_SQL, (session_id,))
         if row is not None:
             return json.loads(row[0])
@@ -109,6 +122,7 @@ class SessionStore:
     def verify_token(self, token):
         session_data = self.get(token)
         if session_data is not None:
+            self.execute(TOUCH_SESSION_SQL, (token,))
             return session_data
         return False
 

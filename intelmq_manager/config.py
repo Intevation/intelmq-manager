@@ -24,6 +24,8 @@ class Config:
 
     session_store: Optional[Path] = None
 
+    session_duration: int = 24 * 3600
+
 
 def load_config(filename: str) -> Config:
     """Load configuration from JSON file"""
@@ -40,5 +42,8 @@ def load_config(filename: str) -> Config:
 
     if "session_store" in raw:
         config.session_store = Path(raw["session_store"])
+
+    if "session_duration" in raw:
+        config.session_duration = int(raw["session_duration"])
 
     return config
